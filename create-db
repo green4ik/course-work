@@ -1,0 +1,351 @@
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[cart]    Script Date: 30.04.2024 1:28:19 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[cart](
+	[cart_id] [int] IDENTITY(1,1) NOT NULL,
+	[user_id] [int] NULL,
+	[product_id] [int] NULL,
+	[unit_price] [decimal](10, 2) NULL,
+	[total_price] [decimal](10, 2) NULL,
+	[discount] [decimal](10, 2) NULL,
+	[amount] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[cart_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[cart]  WITH CHECK ADD FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+GO
+
+ALTER TABLE [dbo].[cart]  WITH CHECK ADD FOREIGN KEY([user_id])
+REFERENCES [dbo].[users] ([user_id])
+GO
+
+ALTER TABLE [dbo].[cart]  WITH CHECK ADD  CONSTRAINT [FK_cart_product_id] FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[cart] CHECK CONSTRAINT [FK_cart_product_id]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[categories]    Script Date: 30.04.2024 1:28:28 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[categories](
+	[category_id] [int] IDENTITY(1,1) NOT NULL,
+	[category_name] [varchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[category_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[change_log]    Script Date: 30.04.2024 1:28:35 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[change_log](
+	[record_id] [int] IDENTITY(1,1) NOT NULL,
+	[change_date] [date] NULL,
+	[change_description] [text] NULL,
+	[user_id] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[record_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[change_log]  WITH CHECK ADD FOREIGN KEY([user_id])
+REFERENCES [dbo].[users] ([user_id])
+GO
+
+ALTER TABLE [dbo].[change_log]  WITH CHECK ADD  CONSTRAINT [FK_user_id_2] FOREIGN KEY([user_id])
+REFERENCES [dbo].[users] ([user_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[change_log] CHECK CONSTRAINT [FK_user_id_2]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[order_details]    Script Date: 30.04.2024 1:28:43 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[order_details](
+	[order_detail_id] [int] IDENTITY(1,1) NOT NULL,
+	[order_id] [int] NULL,
+	[product_id] [int] NULL,
+	[price] [decimal](10, 2) NULL,
+	[quantity] [int] NULL,
+	[discount] [decimal](10, 2) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[order_detail_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[order_details]  WITH CHECK ADD FOREIGN KEY([order_id])
+REFERENCES [dbo].[orders] ([order_id])
+GO
+
+ALTER TABLE [dbo].[order_details]  WITH CHECK ADD FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+GO
+
+ALTER TABLE [dbo].[order_details]  WITH CHECK ADD  CONSTRAINT [FK_order_details_product_id] FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[order_details] CHECK CONSTRAINT [FK_order_details_product_id]
+GO
+
+ALTER TABLE [dbo].[order_details]  WITH CHECK ADD  CONSTRAINT [FK_OrderDetails_Orders] FOREIGN KEY([order_id])
+REFERENCES [dbo].[orders] ([order_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[order_details] CHECK CONSTRAINT [FK_OrderDetails_Orders]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[orders]    Script Date: 30.04.2024 1:28:50 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[orders](
+	[order_id] [int] IDENTITY(1,1) NOT NULL,
+	[user_id] [int] NULL,
+	[order_date] [date] NULL,
+	[order_status] [varchar](100) NULL,
+	[price] [decimal](10, 2) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[order_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[orders]  WITH CHECK ADD FOREIGN KEY([user_id])
+REFERENCES [dbo].[users] ([user_id])
+GO
+
+ALTER TABLE [dbo].[orders]  WITH CHECK ADD  CONSTRAINT [FK_user_id] FOREIGN KEY([user_id])
+REFERENCES [dbo].[users] ([user_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[orders] CHECK CONSTRAINT [FK_user_id]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[product_categories]    Script Date: 30.04.2024 1:29:00 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[product_categories](
+	[product_category_id] [int] IDENTITY(1,1) NOT NULL,
+	[product_id] [int] NULL,
+	[category_id] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[product_category_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[product_categories]  WITH CHECK ADD FOREIGN KEY([category_id])
+REFERENCES [dbo].[categories] ([category_id])
+GO
+
+ALTER TABLE [dbo].[product_categories]  WITH CHECK ADD FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+GO
+
+ALTER TABLE [dbo].[product_categories]  WITH CHECK ADD  CONSTRAINT [FK_product_categories_product_id] FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[product_categories] CHECK CONSTRAINT [FK_product_categories_product_id]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[products]    Script Date: 30.04.2024 1:29:06 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[products](
+	[product_id] [int] IDENTITY(1,1) NOT NULL,
+	[product_name] [varchar](255) NULL,
+	[manufacturer] [varchar](255) NULL,
+	[price] [decimal](10, 2) NULL,
+	[quantity_in_stock] [int] NULL,
+	[discount] [decimal](10, 2) NULL,
+	[image] [varchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[product_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[products]  WITH CHECK ADD  CONSTRAINT [check_non_negative_values] CHECK  (([price]>=(0) AND [quantity_in_stock]>=(0) AND [discount]>=(0)))
+GO
+
+ALTER TABLE [dbo].[products] CHECK CONSTRAINT [check_non_negative_values]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[supplies]    Script Date: 30.04.2024 1:29:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[supplies](
+	[supply_id] [int] IDENTITY(1,1) NOT NULL,
+	[supply_date] [date] NULL,
+	[supply_status] [varchar](255) NULL,
+	[cost] [decimal](10, 2) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[supply_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[supply_details]    Script Date: 30.04.2024 1:29:23 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[supply_details](
+	[supply_details_id] [int] IDENTITY(1,1) NOT NULL,
+	[supplies_id] [int] NULL,
+	[product_id] [int] NULL,
+	[price] [decimal](10, 2) NULL,
+	[amount] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[supply_details_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[supply_details]  WITH CHECK ADD FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+GO
+
+ALTER TABLE [dbo].[supply_details]  WITH CHECK ADD FOREIGN KEY([supplies_id])
+REFERENCES [dbo].[supplies] ([supply_id])
+GO
+
+ALTER TABLE [dbo].[supply_details]  WITH CHECK ADD  CONSTRAINT [FK_supply_details_products] FOREIGN KEY([product_id])
+REFERENCES [dbo].[products] ([product_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[supply_details] CHECK CONSTRAINT [FK_supply_details_products]
+GO
+
+ALTER TABLE [dbo].[supply_details]  WITH CHECK ADD  CONSTRAINT [FK_supply_details_supplies] FOREIGN KEY([supplies_id])
+REFERENCES [dbo].[supplies] ([supply_id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[supply_details] CHECK CONSTRAINT [FK_supply_details_supplies]
+GO
+
+ALTER TABLE [dbo].[supply_details]  WITH CHECK ADD  CONSTRAINT [check_non_negative_value] CHECK  (([amount]>=(0)))
+GO
+
+ALTER TABLE [dbo].[supply_details] CHECK CONSTRAINT [check_non_negative_value]
+GO
+
+USE [WeaponShopDB]
+GO
+
+/****** Object:  Table [dbo].[users]    Script Date: 30.04.2024 1:29:29 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[users](
+	[user_id] [int] IDENTITY(1,1) NOT NULL,
+	[last_name] [varchar](255) NULL,
+	[first_name] [varchar](255) NULL,
+	[address] [varchar](255) NULL,
+	[phone_number] [varchar](20) NULL,
+	[passport] [varchar](20) NULL,
+	[email] [varchar](255) NULL,
+	[login] [varchar](100) NULL,
+	[password] [varchar](100) NULL,
+	[type] [varchar](100) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[user_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[users]  WITH CHECK ADD CHECK  (([type]='admin' OR [type]='user'))
+GO
