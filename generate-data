@@ -1,0 +1,244 @@
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+
+class Program {
+    static string[] maleFirstNames = { "John", "Michael", "James", "David", "Robert", "William", "Joseph", "Charles", "Thomas", "Daniel" };
+    static string[] femaleFirstNames = { "Mary", "Jennifer", "Linda", "Patricia", "Elizabeth", "Susan", "Jessica", "Sarah", "Karen", "Nancy" };
+    static string[] lastNames = { "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Martinez", "Hernandez" };
+    static string[] streets = { "Main Street", "Broadway", "Park Avenue", "Market Street", "Fifth Avenue", "Madison Avenue", "Sunset Boulevard", "Elm Street", "Wall Street", "Oak Street" };
+
+    static Random rand = new Random();
+
+    static void Main() {
+        string connectionString = "Server=.\\SQLExpress;Database=WeaponShopDB;Trusted_Connection=true;";
+        //GenerateUser(connectionString);
+        //GenerateSupplies(connectionString);
+        //GenerateOrders(connectionString);
+    }
+
+    private static void GenerateOrders(string connectionString) {
+        Random rand = new Random();
+
+        using (SqlConnection connection = new SqlConnection(connectionString)) {
+            connection.Open();
+
+            List<int> userIds = new List<int>();
+            string selectUsersQuery = "SELECT [user_id] FROM [WeaponShopDB].[dbo].[users] ORDER BY NEWID()";
+            using (SqlCommand selectUsersCommand = new SqlCommand(selectUsersQuery, connection))
+            using (SqlDataReader reader = selectUsersCommand.ExecuteReader()) {
+                int count = 0;
+                while (reader.Read() && count < 500) {
+                    userIds.Add(reader.GetInt32(0));
+                    count++;
+                }
+            }
+
+            foreach (int userId in userIds) {
+                DateTime orderDate = DateTime.Now.AddDays(-rand.Next(1, 365));
+
+                string insertOrderQuery = @"
+            INSERT INTO [WeaponShopDB].[dbo].[orders] ([user_id], [order_date], [order_status], [price])
+            VALUES (@UserId, @OrderDate, 'Pending', 0);
+            SELECT SCOPE_IDENTITY();";
+
+                int orderId;
+
+                using (SqlCommand command = new SqlCommand(insertOrderQuery, connection)) {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    command.Parameters.AddWithValue("@OrderDate", orderDate);
+
+                    orderId = Convert.ToInt32(command.ExecuteScalar());
+                }
+
+                int numberOfProducts = rand.Next(1, 5);
+
+                for (int j = 0; j < numberOfProducts; j++) {
+                    string selectProductQuery = @"
+                SELECT TOP 1 [product_id], [price], [discount]
+                FROM [WeaponShopDB].[dbo].[products]
+                ORDER BY NEWID();";
+
+                    int productId;
+                    decimal price;
+                    decimal discount;
+
+                    using (SqlCommand selectProductCommand = new SqlCommand(selectProductQuery, connection))
+                    using (SqlDataReader reader = selectProductCommand.ExecuteReader()) {
+                        if (reader.Read()) {
+                            productId = reader.GetInt32(0);
+                            price = reader.GetDecimal(1);
+                            discount = reader.GetDecimal(2);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    int quantity = rand.Next(0, 6);
+
+                    decimal orderPrice = price * (1 - discount / 100);
+
+                    string insertOrderDetailQuery = @"
+                INSERT INTO [WeaponShopDB].[dbo].[order_details] ([order_id], [product_id], [price], [quantity], [discount])
+                VALUES (@OrderId, @ProductId, @Price, @Quantity, @Discount);";
+
+                    using (SqlCommand insertOrderDetailCommand = new SqlCommand(insertOrderDetailQuery, connection)) {
+                        insertOrderDetailCommand.Parameters.AddWithValue("@OrderId", orderId);
+                        insertOrderDetailCommand.Parameters.AddWithValue("@ProductId", productId);
+                        insertOrderDetailCommand.Parameters.AddWithValue("@Price", orderPrice);
+                        insertOrderDetailCommand.Parameters.AddWithValue("@Quantity", quantity);
+                        insertOrderDetailCommand.Parameters.AddWithValue("@Discount", discount);
+
+                        insertOrderDetailCommand.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        Console.WriteLine("Orders and order details successfully added!");
+    }
+
+    private static void GenerateUser(string connectionString) {
+        for (int i = 0; i < 5000; i++) {
+            string firstName = GetRandomFirstName();
+            string lastName = GetRandomLastName();
+            string address = GetRandomAddress();
+            string phoneNumber = "123456789" + rand.Next(100, 999);
+            string passport = "AB" + rand.Next(100000, 999999);
+            string email = GenerateRandomEmail(firstName.ToLower() + lastName.ToLower());
+            string login = GenerateRandomLogin();
+            string password = GenerateRandomPassword();
+
+            AddUser(connectionString, login, firstName, lastName, address, phoneNumber, passport, email, password);
+        }
+
+        Console.WriteLine("Data successfully added!");
+    }
+
+    private static void GenerateSupplies(string connectionString) {
+        Random rand = new Random();
+
+        using (SqlConnection connection = new SqlConnection(connectionString)) {
+            connection.Open();
+
+            for (int i = 0; i < 2000; i++) {
+                DateTime supplyDate = DateTime.Now.AddDays(-rand.Next(1, 365));
+
+                string insertSupplyQuery = @"
+                INSERT INTO [WeaponShopDB].[dbo].[supplies] ([supply_date], [supply_status], [cost])
+                VALUES (@SupplyDate, 'Pending', 0);
+                SELECT SCOPE_IDENTITY();";
+
+                int supplyId;
+
+                using (SqlCommand command = new SqlCommand(insertSupplyQuery, connection)) {
+                    command.Parameters.AddWithValue("@SupplyDate", supplyDate);
+
+                    supplyId = Convert.ToInt32(command.ExecuteScalar());
+                }
+
+                int numberOfProducts = rand.Next(1, 5);
+
+                for (int j = 0; j < numberOfProducts; j++) {
+                    string selectProductQuery = @"
+                    SELECT TOP 1 [product_id], [price]
+                    FROM [WeaponShopDB].[dbo].[products]
+                    ORDER BY NEWID();";
+
+                    int productId;
+                    decimal price;
+
+                    using (SqlCommand selectProductCommand = new SqlCommand(selectProductQuery, connection))
+                    using (SqlDataReader reader = selectProductCommand.ExecuteReader()) {
+                        if (reader.Read()) {
+                            productId = reader.GetInt32(0);
+                            price = reader.GetDecimal(1);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    decimal supplyPrice = price * 0.75m;
+
+                    int amount = rand.Next(1, 10);
+
+                    string insertSupplyDetailsQuery = @"
+                    INSERT INTO [WeaponShopDB].[dbo].[supply_details] ([supplies_id], [product_id], [price], [amount])
+                    VALUES (@SupplyId, @ProductId, @Price, @Amount);";
+
+                    using (SqlCommand insertSupplyDetailsCommand = new SqlCommand(insertSupplyDetailsQuery, connection)) {
+                        insertSupplyDetailsCommand.Parameters.AddWithValue("@SupplyId", supplyId);
+                        insertSupplyDetailsCommand.Parameters.AddWithValue("@ProductId", productId);
+                        insertSupplyDetailsCommand.Parameters.AddWithValue("@Price", supplyPrice);
+                        insertSupplyDetailsCommand.Parameters.AddWithValue("@Amount", amount);
+
+                        insertSupplyDetailsCommand.ExecuteNonQuery();
+                    }
+                }
+            }
+        }
+
+        Console.WriteLine("Supplies and supply details successfully added!");
+    }
+
+    static string GetRandomFirstName() {
+        if (rand.Next(2) == 0)
+            return maleFirstNames[rand.Next(maleFirstNames.Length)];
+        else
+            return femaleFirstNames[rand.Next(femaleFirstNames.Length)];
+    }
+
+    static string GetRandomLastName() {
+        return lastNames[rand.Next(lastNames.Length)];
+    }
+
+    static string GetRandomAddress() {
+        return streets[rand.Next(streets.Length)] + ", " + rand.Next(1, 1000);
+    }
+
+    static string GenerateRandomEmail(string username) {
+        string[] domains = { "gmail.com", "outlook.com", "hotmail.com" };
+        return username + "@" + domains[rand.Next(domains.Length)];
+    }
+
+    static string GenerateRandomLogin() {
+        string login = "";
+        for (int i = 0; i < rand.Next(5, 9); i++) {
+            login += (char)rand.Next('a', 'z' + 1);
+        }
+        login += rand.Next(1000).ToString("D3");
+        return login;
+    }
+
+    static string GenerateRandomPassword() {
+        string password = "";
+        for (int i = 0; i < rand.Next(6, 10); i++) {
+            password += (char)rand.Next('a', 'z' + 1);
+        }
+        password += rand.Next(100).ToString("D2");
+        return password;
+    }
+
+    static void AddUser(string connectionString, string login, string firstName, string lastName, string address, string phoneNumber, string passport, string email, string password) {
+        string query = @"INSERT INTO [WeaponShopDB].[dbo].[users] 
+                            ([login], [first_name], [last_name], [address], [phone_number], [passport], [email], [password], [type]) 
+                         VALUES 
+                            (@Login, @FirstName, @LastName, @Address, @PhoneNumber, @Passport, @Email, @Password, @Type)";
+
+        using (SqlConnection connection = new SqlConnection(connectionString))
+        using (SqlCommand command = new SqlCommand(query, connection)) {
+            command.Parameters.AddWithValue("@Login", login);
+            command.Parameters.AddWithValue("@FirstName", firstName);
+            command.Parameters.AddWithValue("@LastName", lastName);
+            command.Parameters.AddWithValue("@Address", address);
+            command.Parameters.AddWithValue("@PhoneNumber", phoneNumber);
+            command.Parameters.AddWithValue("@Passport", passport);
+            command.Parameters.AddWithValue("@Email", email);
+            command.Parameters.AddWithValue("@Password", password);
+            command.Parameters.AddWithValue("@Type", "user");
+
+            connection.Open();
+            command.ExecuteNonQuery();
+        }
+    }
+}
