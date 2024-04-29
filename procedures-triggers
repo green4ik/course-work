@@ -1,0 +1,339 @@
+CREATE TRIGGER CreateSecondTableEntry  
+ON users  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;        
+    INSERT INTO change_log(change_date, change_description, user_id)      
+    SELECT GETDATE(), 'New user registrated!', user_id       
+    FROM inserted;  
+END;  
+CREATE TRIGGER UpdateUser  
+ON users  
+AFTER UPDATE  
+AS  
+BEGIN      
+    SET NOCOUNT ON;        
+    INSERT INTO change_log(change_date, change_description, user_id)      
+    SELECT GETDATE(), 'User data updated!', user_id       
+    FROM inserted;  
+END;  
+CREATE TRIGGER UpdateSupplyCost     
+ON [WeaponShopDB].[dbo].[supply_details]     
+AFTER INSERT  
+AS     
+BEGIN              
+    UPDATE s         
+    SET s.cost = (             
+        SELECT SUM(sd.price * sd.amount)            
+        FROM [WeaponShopDB].[dbo].[supply_details] sd             
+        WHERE sd.supplies_id = s.supply_id      
+    )         
+    FROM [WeaponShopDB].[dbo].[supplies] s         
+    INNER JOIN INSERTED i ON s.supply_id = i.supplies_id;  
+END;
+CREATE TRIGGER trg_cancelledSupply  
+ON [WeaponShopDB].[dbo].[supplies]  
+AFTER UPDATE  
+AS  
+BEGIN      
+    SET NOCOUNT ON;        
+        
+    IF UPDATE(supply_status)  
+    BEGIN 
+        TRANSACTION;          
+
+        UPDATE p          
+        SET p.quantity_in_stock = p.quantity_in_stock + sd.amount          
+        FROM [WeaponShopDB].[dbo].[products] p          
+        INNER JOIN [WeaponShopDB].[dbo].[supply_details] sd ON p.product_id = sd.product_id          
+        INNER JOIN [WeaponShopDB].[dbo].[supplies] s ON sd.supplies_id = s.supply_id          
+        INNER JOIN inserted i ON s.supply_id = i.supply_id          
+        WHERE i.supply_status = 'Completed';      
+
+        COMMIT TRANSACTION;        
+        
+        IF UPDATE(supply_status) AND EXISTS (SELECT 1 FROM deleted WHERE supply_status = 'Cancelled')      
+        BEGIN          
+            UPDATE s          
+            SET s.cost = 0          
+            FROM [WeaponShopDB].[dbo].[supplies] s          
+            INNER JOIN deleted d ON s.supply_id = d.supply_id          
+            WHERE d.supply_status = 'Cancelled';      
+        END;  
+    END;  
+END;
+CREATE TRIGGER createOnNewGun  
+ON products  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;        
+        
+    -- Вставка даних з Table1 в Table2      
+    INSERT INTO change_log(change_date, change_description)  
+    -- Замініть Column1, Column2, Column3 на реальні назви стовпців      
+    SELECT SYSDATETIME(),'New product added!'      
+    FROM inserted;  
+END;  
+CREATE TRIGGER trgCalculatePrice  
+ON cart  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    -- Оновлення ціни      
+    UPDATE c      
+    SET c.discount = p.discount,          
+        c.unit_price = p.price,          
+        c.total_price = (p.price * (1 - (p.discount / 100))) * c.amount      
+    FROM cart c      
+    INNER JOIN inserted i ON c.cart_id = i.cart_id      
+    INNER JOIN products p ON i.product_id = p.product_id;  
+END;  
+CREATE TRIGGER trgCalculatePriceaftUpd  
+ON cart  
+AFTER UPDATE  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    UPDATE c      
+    SET c.discount = p.discount,          
+        c.unit_price = p.price,          
+        c.total_price = (p.price * (1 - (p.discount / 100))) * c.amount      
+    FROM cart c      
+    INNER JOIN inserted i ON c.cart_id = i.cart_id      
+    INNER JOIN products p ON i.product_id = p.product_id;  
+END;  
+CREATE TRIGGER trgAfterInsert  
+ON orders  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    INSERT INTO change_log(change_date, change_description, user_id)       
+    SELECT  SYSDATETIME(), 'New order '+CAST(order_id AS VARCHAR(10))+' created!', user_id        
+    FROM inserted;  
+END;  
+CREATE TRIGGER updateOrderPrice  
+ON order_details  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    UPDATE o      
+    SET o.price = o.price + i.price      
+    FROM [orders] o      
+    JOIN inserted i ON o.order_id = i.order_id;  
+END;  
+CREATE TRIGGER trg_PreventOverstock  
+ON cart  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    -- Отримати product_id, для якого проводиться вставка в cart  
+    DECLARE @product_id INT;  
+    SELECT @product_id = product_id FROM inserted;          
+    
+    -- Знайти суму amount для всіх записів у cart з вставленим product_id  
+    DECLARE @total_amount INT;  
+    SELECT @total_amount = SUM(amount)  
+    FROM cart  
+    WHERE product_id = @product_id;          
+    
+    -- Отримати кількість товару у наявності (quantity_in_stock) для даного product_id  
+    DECLARE @quantity_in_stock INT;  
+    SELECT @quantity_in_stock = quantity_in_stock  
+    FROM products  
+    WHERE product_id = @product_id;          
+    
+    -- Перевірити, чи сума amount у всіх cart більше за кількість товару у наявності  
+    IF @total_amount > @quantity_in_stock  
+    BEGIN  
+        -- Видалити вставлений запис з cart  
+        DELETE FROM cart  
+        WHERE product_id = @product_id;  
+    
+        -- Вивести повідомлення про перевищення кількості товару у наявності  
+        RAISERROR ('The total amount in cart exceeds the available quantity in stock for product with ID %d.', 16, 1, @product_id);  
+    END  
+END;  
+CREATE TRIGGER trg_PreventOverstock2  
+ON cart  
+AFTER UPDATE, INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    -- Отримати product_id, для якого проводиться вставка в cart  
+    DECLARE @product_id INT;  
+    SELECT @product_id = product_id FROM inserted;          
+    
+    -- Знайти суму amount для всіх записів у cart з вставленим product_id  
+    DECLARE @total_amount INT;  
+    SELECT @total_amount = SUM(amount)  
+    FROM cart  
+    WHERE product_id = @product_id;          
+    
+    -- Отримати кількість товару у наявності (quantity_in_stock) для даного product_id  
+    DECLARE @quantity_in_stock INT;  
+    SELECT @quantity_in_stock = quantity_in_stock  
+    FROM products  
+    WHERE product_id = @product_id;          
+    
+    -- Перевірити, чи сума amount у всіх cart більше за кількість товару у наявності  
+    IF @total_amount > @quantity_in_stock  
+    BEGIN  
+        -- Видалити вставлений запис з cart  
+        DELETE FROM cart  
+        WHERE product_id = @product_id;  
+    
+        -- Вивести повідомлення про перевищення кількості товару у наявності  
+        RAISERROR ('The total amount in cart exceeds the available quantity in stock for product with ID %d.', 16, 1, @product_id);  
+    END  
+END;  
+CREATE TRIGGER trg_CancelledOrder  
+ON [WeaponShopDB].[dbo].[orders]  
+AFTER UPDATE  
+AS  
+BEGIN      
+    SET NOCOUNT ON;          
+    
+    IF UPDATE(order_status)  
+    BEGIN  
+        UPDATE p  
+        SET p.quantity_in_stock = p.quantity_in_stock + od.quantity  
+        FROM [WeaponShopDB].[dbo].[products] p  
+        INNER JOIN [WeaponShopDB].[dbo].[order_details] od ON p.product_id = od.product_id  
+        INNER JOIN inserted i ON od.order_id = i.order_id  
+        WHERE i.order_status = 'Cancelled';  
+    END  
+END;  
+CREATE TRIGGER trg_OrderDetailsInsert  
+ON order_details  
+AFTER INSERT  
+AS  
+BEGIN      
+    SET NOCOUNT ON;           
+    
+    DECLARE @product_id INT;      
+    DECLARE @quantity INT;            
+    
+    -- Отримання значення product_id та кількості товару з нового запису      
+    SELECT @product_id = product_id,             
+           @quantity = quantity       
+    FROM inserted;            
+    
+    -- Зменшення кількості товару на кількість замовлених одиниць      
+    UPDATE products      
+    SET quantity_in_stock = quantity_in_stock - @quantity      
+    WHERE product_id = @product_id      
+    AND products.quantity_in_stock - @quantity >= 0; -- Перевірка, щоб кількість не стала від'ємною         
+    
+    DECLARE @quantity_in_stock INT   
+    SELECT  @quantity_in_stock = quantity_in_stock   
+    FROM products;      
+    
+    IF @quantity_in_stock  < 0      
+    BEGIN          
+        DELETE FROM orders          
+        WHERE order_id IN (              
+            SELECT order_id              
+            FROM inserted          
+        );      
+    END  
+END;  
+CREATE TRIGGER UpdateSupplyDetailsAndCost  
+ON [WeaponShopDB].[dbo].[supplies]  
+AFTER INSERT  
+AS  
+BEGIN      
+    -- Обновляем supplies_id в supply_details      
+    UPDATE sd      
+    SET sd.supplies_id = i.supply_id      
+    FROM [WeaponShopDB].[dbo].[supply_details] sd      
+    INNER JOIN INSERTED i ON sd.supplies_id IS NULL ;        
+        
+    -- Вычисляем сумму cost на основе деталей поставки      
+    UPDATE s      
+    SET s.cost = (          
+        SELECT SUM(sd.price * sd.amount)          
+        FROM [WeaponShopDB].[dbo].[supply_details] sd          
+        WHERE sd.supplies_id = s.supply_id      
+    )      
+    FROM [WeaponShopDB].[dbo].[supplies] s      
+    INNER JOIN INSERTED i ON s.supply_id = i.supply_id;  
+END;  
+CREATE PROCEDURE CalculateProductQuantityByMonth
+AS
+BEGIN
+    SELECT 
+        YEAR(orders.order_date) AS order_year,
+        MONTH(orders.order_date) AS order_month,
+        order_details.product_id,
+        SUM(order_details.quantity) AS total_quantity
+    FROM 
+        orders
+    INNER JOIN 
+        order_details ON orders.order_id = order_details.order_id
+    WHERE
+        orders.order_status = 'Completed' -- Фильтруем по статусу заказа
+    GROUP BY 
+        YEAR(orders.order_date), 
+        MONTH(orders.order_date), 
+        order_details.product_id
+    ORDER BY 
+        order_year, 
+        order_month;
+END
+
+
+CREATE PROCEDURE CalculateTotalRevenueByMonth
+AS
+BEGIN
+    SELECT 
+        YEAR(orders.order_date) AS order_year,
+        MONTH(orders.order_date) AS order_month,
+        SUM(order_details.price * order_details.quantity) AS total_revenue
+    FROM 
+        orders
+    INNER JOIN 
+        order_details ON orders.order_id = order_details.order_id
+    WHERE 
+        orders.order_status = 'Completed'
+    GROUP BY 
+        YEAR(orders.order_date), 
+        MONTH(orders.order_date)
+    ORDER BY 
+        order_year, 
+        order_month;
+END
+drop procedure CalculateTotalSupplyCost
+CREATE PROCEDURE CalculateTotalSupplyCost
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        YEAR(supply_date) AS supply_year,
+        MONTH(supply_date) AS supply_month,
+        SUM(sd.price * sd.amount) AS total_cost
+    FROM 
+        supplies s
+    INNER JOIN 
+        supply_details sd ON s.supply_id = sd.supplies_id
+    WHERE 
+        s.supply_status = 'Completed'
+    GROUP BY 
+        YEAR(s.supply_date), 
+        MONTH(s.supply_date)
+    ORDER BY 
+        supply_year, 
+        supply_month;
+END;
